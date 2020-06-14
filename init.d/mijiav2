@@ -1,0 +1,50 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          skeleton
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Mijia v2 sensor poller initscript
+# Description:       Launch Mijia v2 sensor poller
+#
+### END INIT INFO
+
+# Author: Julien Blais<webmaster@jbsky.fr>
+#
+
+
+DESC="Mijia v2 sensor poller"
+NAME=mijiav2
+DAEMON=/usr/local/sbin/$NAME
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+
+# Exit if the package is not installed
+[ -x "$DAEMON" ] || exit 0
+
+# Read configuration variable file if it is present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+
+case "$1" in
+  start)
+        nohup $DAEMON&
+        ;;
+  stop)
+        ;;
+ 
+  *)
+        #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+        echo "Usage: $SCRIPTNAME {start}" >&2
+        exit 3
+        ;;
+esac

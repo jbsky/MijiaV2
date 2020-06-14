@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# bash script permettant de poller plusieurs capteurs MijiaV2.
+# source d'inspiration : https://www.fanjoe.be/?p=3911
+# On poll les capteurs 1 par 1
+# avec un timeout de 15s si aucune capteur
+# à chaque utilisation, la carte hci est réinitialisé, d''où la nécessité d'être en root
+# Le tout envoyé a influxdb
+
+TIMEOUT=15
+SCRIPT=$$
+tmpfile=/tmp/abc-script.$SCRIPT
+
+MACadd=("A4:C1:38:22:12:A0" "A4:C1:38:A6:97:65" "A4:C1:38:CA:BE:F6" "A4:C1:38:FD:1C:8D")
+
+# Vérifie que l'on est en Root
+if [[ $EUID -ne 0 ]];
+then
+    echo "Ce script doit être exécuté avec les privilèges administrateur"
+    exit 1
+fi
+
+
+while [[ true ]]
+do
+  for i in "${MACadd[@]}"
+  do
+    killall gatttool
+
+    hciconfig hci0 down
+    hciconfig hci0 up
+
+
+    echo > $tmpfile
+    gatttool -b $i --char-write-req --handle='0x0038' --value="0100" --listen > $tmpfile&
+    PID=$!
+
+    # timeout en prévention...
+timeout $TIMEOUT bash <<EOT
+while [[ $(cat $tmpfile |grep Notification | wc -l)  < 1 ]]
+do
+  sleep 1
+done
+}
+EOT
+
+    # kill après une ligne capturée ou timeout
+    disown $PID
+    kill-9 $PID &>/dev/null
+
+    hnd38=$(cat $tmpfile |grep Notification)
+    # Notification handle = 0x0036 value: 7c 08 2a 97 0c
+
+
+    if !([ -z "$hnd38" ])
+    then
+
+
+        temperature=${hnd38:39:2}${hnd38:36:2}
+        temperature=$((16#$temperature))
+        if [ "$temperature" -gt "10000" ];
+        then
+            temperature=$((-65536 + $temperature))
+        fi
+        temperature=$(echo "scale=2;$temperature/100" | bc)
+
+        humidity=${hnd38:42:2}
+        humidity=$((16#$humidity))
+
+        voltage=${hnd38:48:2}${hnd38:45:2}
+        voltage=$((16#$voltage))
+        voltage=$(echo "scale=3;$voltage/1000" | bc)
+
+
+        curl -i -XPOST http://192.168.10.182:8086/write?db=temperature\&precision=s --data-binary "MijiaV2BluetoothSensors,sensorname=$i temperature=$temperature,humidity=$humidity,voltage=$voltage $(date +%s)"
+    else
+
+        echo "Mijia error"
+
+    fi
+  done
+done
