@@ -6,9 +6,18 @@
 TIMEOUT=15
 SCRIPT=$$
 tmpfile=/tmp/abc-script.$SCRIPT
+function get_index {
+for x in "${!MACadd[@]}"; do
+   if [[ "${MACadd[$x]}" = "$1" ]]; then
+        echo $x
+   fi
+done
+}
 
 
 MACadd=("A4:C1:38:22:12:A0" "A4:C1:38:A6:97:65" "A4:C1:38:CA:BE:F6" "A4:C1:38:FD:1C:8D")
+Lib=("Vitre\ Salon" "Salon" "Chambre\ Mathilde" "Chambre\ Parent")
+
 
 # Vérifie que l'on est en Root
 if [[ $EUID -ne 0 ]];
@@ -17,6 +26,8 @@ then
     exit 1
 fi
 
+hciconfig hci0 down
+hciconfig hci0 up
 
 while [[ true ]]
 do
@@ -24,8 +35,6 @@ do
   do
     killall gatttool
 
-    hciconfig hci0 down
-    hciconfig hci0 up
 
 
     echo > $tmpfile
@@ -68,8 +77,10 @@ EOT
         voltage=$((16#$voltage))
         voltage=$(echo "scale=3;$voltage/1000" | bc)
 
+	index=$(get_index "$i")
+	libelle="${Lib[$index]}"
 
-        curl -i -XPOST http://192.168.10.182:8086/write?db=temperature\&precision=s --data-binary "MijiaV2BluetoothSensors,sensorname=$i temperature=$temperature,humidity=$humidity,voltage=$voltage $(date +%s)"
+        curl -i -XPOST http://192.168.10.182:8086/write?db=temperature\&precision=s --data-binary "MijiaV2BluetoothSensors,sensorname=$i,libelle=$libelle temperature=$temperature,humidity=$humidity,voltage=$voltage $(date +%s)"
     else
 
         logger "Error Mijia V2 - MAC=$i"
