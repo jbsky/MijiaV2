@@ -19,8 +19,18 @@ source of inspiration: https://www.fanjoe.be/?p=3911
 `chmod +x /usr/local/sbin/mijiav2 & chmod +x etc/init.d/mijiav2`
 
 # Configuration :
-* In /usr/local/sbin/mijiav2, change MACadd at the beginning of the file, please quote the addresses :
-_ex: MACadd = ("AA:BB:CC:DD:EE:FF" "11:22:33:44:55:66")_
+### In /usr/local/sbin/mijiav2, at the beginning of the file :
+* change addMAC , please quote the addresses :
+_ex: addMAC = ("AA:BB:CC:DD:EE:FF" "11:22:33:44:55:66")_
+
+* Add label corresponding for each MAC address, of course with the same constraints.  :
+_ex: ("Vitre\ Salon" "Salon" "Chambre\ Mathilde" "Chambre\ Parent")_
+
+* change influxDB IP :
+_influxDB="192.168.10.182:8086"_
+
+* change the name of the influxDB database :
+_db="temperature"
 
 # Execution :
 * Simply as a service : `sudo systemctl start mijiav2.service`
