@@ -6,17 +6,19 @@
 TIMEOUT=15
 SCRIPT=$$
 tmpfile=/tmp/abc-script.$SCRIPT
+influxDB="192.168.10.182:8086"
+addMAC=("A4:C1:38:22:12:A0" "A4:C1:38:A6:97:65" "A4:C1:38:CA:BE:F6" "A4:C1:38:FD:1C:8D")
+label=("Vitre\ Salon" "Salon" "Chambre\ Mathilde" "Chambre\ Parent")
+db="temperature"
+int="hci0"
+
 function get_index {
-for x in "${!MACadd[@]}"; do
-   if [[ "${MACadd[$x]}" = "$1" ]]; then
+for x in "${!addMAC[@]}"; do
+   if [[ "${addMAC[$x]}" = "$1" ]]; then
         echo $x
    fi
 done
 }
-
-
-MACadd=("A4:C1:38:22:12:A0" "A4:C1:38:A6:97:65" "A4:C1:38:CA:BE:F6" "A4:C1:38:FD:1C:8D")
-Lib=("Vitre\ Salon" "Salon" "Chambre\ Mathilde" "Chambre\ Parent")
 
 
 # Vérifie que l'on est en Root
@@ -26,22 +28,21 @@ then
     exit 1
 fi
 
-hciconfig hci0 down
-hciconfig hci0 up
+hciconfig $int down
+hciconfig $int up
 
 while [[ true ]]
 do
-  for i in "${MACadd[@]}"
+  for i in "${addMAC[@]}"
   do
     killall gatttool
 
-
-
+    # clean temp file
     echo > $tmpfile
     gatttool -b $i --char-write-req --handle='0x0038' --value="0100" --listen > $tmpfile&
     PID=$!
 
-    # timeout en prévention...
+    # timeout in prevention
 timeout $TIMEOUT bash <<EOT
 while [[ $(cat $tmpfile |grep Notification | wc -l)  < 1 ]]
 do
@@ -50,17 +51,18 @@ done
 }
 EOT
 
-    # kill après une ligne capturée ou timeout
+    # prepare kill output
     disown $PID
+
     kill-9 $PID &>/dev/null
 
+    # get captured handle
     hnd38=$(cat $tmpfile |grep Notification)
     # Notification handle = 0x0036 value: 7c 08 2a 97 0c
 
 
     if !([ -z "$hnd38" ])
     then
-
 
         temperature=${hnd38:39:2}${hnd38:36:2}
         temperature=$((16#$temperature))
@@ -78,9 +80,9 @@ EOT
         voltage=$(echo "scale=3;$voltage/1000" | bc)
 
 	index=$(get_index "$i")
-	libelle="${Lib[$index]}"
+	libelle="${label[$index]}"
 
-        curl -i -XPOST http://192.168.10.182:8086/write?db=temperature\&precision=s --data-binary "MijiaV2BluetoothSensors,sensorname=$i,libelle=$libelle temperature=$temperature,humidity=$humidity,voltage=$voltage $(date +%s)"
+        curl -i -XPOST http://${influxDB}/write?db=${db}\&precision=s --data-binary "MijiaV2BluetoothSensors,sensorname=$i,libelle=$libelle temperature=$temperature,humidity=$humidity,voltage=$voltage $(date +%s)"
     else
 
         logger "Error Mijia V2 - MAC=$i"
