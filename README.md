@@ -14,8 +14,11 @@ source of inspiration: https://www.fanjoe.be/?p=3911
 
 # Integration :
 * copy the files directly into their respective places and make them executable :
+
 `curl https://raw.githubusercontent.com/jbsky/MijiaV2/master/sbin/mijiav2 -o /usr/local/sbin/mijiav2`
+
 `curl https://raw.githubusercontent.com/jbsky/MijiaV2/master/init.d/mijiav2 -o /etc/init.d/mijiav2`
+
 `chmod +x /usr/local/sbin/mijiav2 & chmod +x etc/init.d/mijiav2`
 
 # Configuration :
